@@ -1,0 +1,11 @@
+# Ignore Node.js modules
+node_modules/
+
+# Ignore npm debug log
+npm-debug.log
+
+# Ignore .history directory
+.history/
+
+# Ignore package lock files
+package-lock.json
