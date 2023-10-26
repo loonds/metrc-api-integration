@@ -1,23 +1,25 @@
 var express = require("express");
 var router = express.Router();
-const service = require("../service/itemService");
+const service = require("../service/item-service");
 const metrc = require("./helpers/MetrcFactory").getNew();
 const serviceItems = new service(metrc);
 
-/* GET Users listing. */
+
+/* GET Categories Active listing. */
 /**
  * @swagger
- * /api/users:
+ * /items/active:
  *   get:
- *     summary: Get a list of users
- *     description: Retrieve a list of user records
+ *     summary: Get a list of active categories
+ *     description: Retrieve a list of active categories
  *     responses:
  *       200:
- *         description: A list of users
+ *         description: A list of active categories
  */
-router.get("/users", function (req, res, next) {
-  var jsonData = { message: "This is JSON data from your Express API" };
-  res.json([{ name: "User 1" }, { name: "User 2" }]);
+router.get("/active", function (req, res, next) {
+  serviceItems.active().then((results) => {
+    res.json(results);
+  });
 });
 
 /* GET Categories listing. */
