@@ -24,7 +24,7 @@ Before you begin, make sure you have the following:
 
 To get started with Loonds, follow these steps:
 
-1. Clone the repository: `git clone https://github.com/pankaj-kumar-techie/metrc-api-integration.gi`
+1. Clone the repository: `git clone https://github.com/pankaj-kumar-techie/metrc-api-integration.git`
 2. Install dependencies: `npm install`
 3. Start the development server: `npm start`
 
