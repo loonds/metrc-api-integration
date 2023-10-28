@@ -1,221 +1,75 @@
 "use strict";
 
 const axios = require("axios");
-const util = require("util");
 const moment = require("moment");
 
-function Metrc(domain, licenseNumber, apiKey, userKey) {
-  const _domain = domain;
-  const _licenseNumber = licenseNumber;
-  const _apiKey = apiKey;
-  const _userKey = userKey;
+class Metrc {
+  constructor(domain, licenseNumber, apiKey, userKey) {
+    this._domain = domain;
+    this._licenseNumber = licenseNumber;
+    this._apiKey = apiKey;
+    this._userKey = userKey;
+  }
 
-  const headers = function () {
+  _getHeaders() {
     return {
       "Content-Type": "application/json",
       Accept: "application/json",
-      Authorization:
-        "Basic " + Buffer.from(_apiKey + ":" + _userKey).toString("base64"),
+      Authorization: `Basic ${Buffer.from(this._apiKey + ":" + this._userKey).toString("base64")}`,
     };
-  };
+  }
 
-  const dayBefore = (endDate) => {
-    return moment(endDate).subtract(24, "hours");
-  };
+  _handleError(err, res, body) {
+    const error = new Error("Metrc API request failed");
+    error.requestHref = res?.request?.href;
+    error.statusCode = res?.status;
+    console.log('error is here ', error)
+    error.statusMessage = res?.statusText;
+    error.responseBody = body;
+    throw error;
+  }
 
-  const parseDate = (date) => {
-    if (!date) {
-      return undefined;
-    }
-    return moment(date);
-  };
-
-  const buildDateArg = (startDate, endDate) => {
-    return {
-      lastModifiedStart: startDate.toJSON(),
-      lastModifiedEnd: endDate.toJSON(),
-    };
-  };
-
-  const buildModifiedDateArgs = (startDate, endDate) => {
-    const dates = [];
-    let lastEnd = moment(endDate);
-    let lastStart, effectiveStartDate;
-    while (lastEnd.isAfter(startDate)) {
-      lastStart = dayBefore(lastEnd);
-      effectiveStartDate = moment.max(lastStart, startDate);
-      dates.push(buildDateArg(effectiveStartDate, lastEnd));
-      lastEnd = lastStart;
-    }
-    return dates;
-  };
-
-  const parseLastModifiedOptions = (options = {}) => {
-    const startDate = parseDate(options.lastModifiedStart);
-    const endDate = parseDate(options.lastModifiedEnd);
-
-    if (!startDate && !endDate) {
-      return [];
-    }
-    if (startDate && endDate) {
-      return buildModifiedDateArgs(startDate, endDate);
-    }
-    if (startDate) {
-      return buildModifiedDateArgs(startDate, moment());
-    }
-    if (endDate) {
-      return [buildDateArg(dayBefore(endDate), endDate)];
-    }
-  };
-
-  const baseUrl = function (path, options) {
-    let basePath = _domain + path + "?licenseNumber=" + _licenseNumber;
-    const separator = "&";
-    if (options) {
-      Object.keys(options).forEach((key) => {
-        basePath += separator + key + "=" + options[key];
-      });
-    }
-    return basePath;
-  };
-
-  const buildErr = function (res, body) {
-    const err = {};
-    if (res) {
-      err.requestHref = res.request.href;
-      err.statusCode = res.statusCode;
-      err.statusMessage = res.statusMessage;
-      err.responseBody = body;
+  _parseResponse(response) {
+    if (response.status >= 200 && response.status < 400) {
+      return response.data;
     } else {
-      err.statusCode = 500;
-      err.responseBody = util.inspect(body);
+      this._handleError(null, response, response.data);
     }
-    return err;
-  };
+  }
 
-  const tryToConvertToObject = function (results) {
-    if (typeof results == "object") {
-      return results;
-    }
-    if (typeof results == "string") {
-      try {
-        return JSON.parse(results);
-      } catch (e) {
-        return results;
+  async _request(method, path, body) {
+    try {
+      const response = await axios({
+        method: method,
+        url: `${this._domain}${path}?licenseNumber=${this._licenseNumber}`,
+        headers: this._getHeaders(),
+        data: body,
+      });
+      return this._parseResponse(response);
+    } catch (error) {
+      if (error.response) {
+        this._handleError(error, error.response, error.response.data);
+      } else {
+        throw error;
       }
     }
-  };
+  }
 
-  const handleResponse = function (err, res, body, resolve, reject) {
-    if (err) {
-      reject(buildErr(res, err));
-    } else if (res.status >= 400) {
-      reject(buildErr(res, body));
-    } else {
-      resolve(tryToConvertToObject(body));
-    }
-  };
+  async get(path, options) {
+    return this._request("GET", path, options);
+  }
 
-  const getSingleBatch = function (url) {
-    return new Promise(function (resolve, reject) {
-      axios
-        .get(url, { headers: headers() })
-        .then((response) => {
-          handleResponse(null, response, response.data, resolve, reject);
-        })
-        .catch((error) => {
-          handleResponse(
-            error,
-            error.response,
-            error.response.data,
-            resolve,
-            reject
-          );
-        });
-    });
-  };
+  async post(path, body) {
+    return this._request("POST", path, body);
+  }
 
-  const getMultipleBatches = (path, dateArgs) => {
-    const batches = [];
-    dateArgs.map((args) => {
-      batches.push(
-        new Promise((resolve, reject) => {
-          const argOptions = args;
-          const url = baseUrl(path, argOptions);
-          getSingleBatch(url)
-            .then((batch) => {
-              resolve(batch);
-            })
-            .catch((err) => {
-              reject(err);
-            });
-        })
-      );
-    });
+  async put(path, body) {
+    return this._request("PUT", path, body);
+  }
 
-    return Promise.all(batches).then((values) => {
-      return [].concat.apply([], values);
-    });
-  };
-
-  const get = function (path, options) {
-    const dateArgs = parseLastModifiedOptions(options);
-    if (dateArgs && dateArgs.length > 0) {
-      return getMultipleBatches(path, dateArgs);
-    }
-
-    var url = baseUrl(path);
-    return getSingleBatch(url);
-  };
-
-  const post = function (path, body) {
-    var url = baseUrl(path);
-    var argument = Array.isArray(body) ? body : [body];
-
-    return new Promise(function (resolve, reject) {
-      axios
-        .post(url, argument, { headers: headers() })
-        .then((response) => {
-          handleResponse(null, response, response.data, resolve, reject);
-        })
-        .catch((error) => {
-          handleResponse(
-            error,
-            error.response,
-            error.response.data,
-            resolve,
-            reject
-          );
-        });
-    });
-  };
-
-  const doDelete = function (path, body) {
-    var url = baseUrl(path);
-    var argument = Array.isArray(body) ? body : [body];
-    return new Promise(function (resolve, reject) {
-      axios
-        .delete(url, { headers: headers(), data: argument })
-        .then((response) => {
-          handleResponse(null, response, response.data, resolve, reject);
-        })
-        .catch((error) => {
-          handleResponse(
-            error,
-            error.response,
-            error.response.data,
-            resolve,
-            reject
-          );
-        });
-    });
-  };
-
-  return {
-    get: get,
-    post: post,
-    delete: doDelete,
-  };
+  async delete(path, body) {
+    return this._request("DELETE", path, body);
+  }
 }
 
 module.exports = Metrc;
