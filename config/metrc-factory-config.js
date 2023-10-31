@@ -1,6 +1,6 @@
 'use strict'
 
-const Metrc = require('../../service/Metrc')
+const Metrc = require('../service/Metrc')
 const fs = require('fs')
 
 exports.getNew = function() {

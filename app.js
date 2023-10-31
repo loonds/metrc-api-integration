@@ -9,7 +9,7 @@ var itemsRouter = require('./routes/item-routes');
 var employeesRouter = require('./routes/employees-routes');
 var salesRouter = require('./routes/sales-routes');
 const swaggerUi = require("swagger-ui-express");
-const swaggerSpec = require("./docs/swaggerDef");
+const swaggerSpec = require("./config/swagger-definition");
 
 var app = express();
 

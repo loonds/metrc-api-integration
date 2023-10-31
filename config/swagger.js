@@ -7,7 +7,7 @@ const port = process.env.PORT || 3000;
 
 const options = {
   definition: swaggerDefinition,
-  apis: ["./routes/*.js"], // Replace with the path to your route files
+  apis: ["./routes/*.js"],
 };
 
 const swaggerSpec = swaggerJSDoc(options);

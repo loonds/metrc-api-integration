@@ -1,11 +1,10 @@
 var express = require("express");
 var router = express.Router();
 const service = require("../service/item-service");
-const metrc = require("./helpers/MetrcFactory").getNew();
+const metrc = require("../config/metrc-factory-config").getNew();
 const serviceItems = new service(metrc);
 
 
-/* GET Categories Active listing. */
 /**
  * @swagger
  * /items/active:
@@ -22,7 +21,6 @@ router.get("/active", function (req, res, next) {
   });
 });
 
-/* GET Categories listing. */
 /**
  * @swagger
  * /items/categories:

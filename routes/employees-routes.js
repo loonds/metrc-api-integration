@@ -1,7 +1,7 @@
 var express = require("express");
 var router = express.Router();
 const service = require("../service/employees-service");
-const metrc = require("./helpers/MetrcFactory").getNew();
+const metrc = require("../config/metrc-factory-config").getNew();
 const employeesService = new service(metrc);
 
 

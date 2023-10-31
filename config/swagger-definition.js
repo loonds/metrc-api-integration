@@ -11,11 +11,11 @@ const options = {
       contact: {
         // Add author name and website
         name: "Pankaj Kumar",
-        url: "https://www.yourwebsite.com",
+        url: "https://github.com/pankaj-kumar-techie",
       },
     },
   },
-  apis: ["./routes/*.js"], // Your API routes
+  apis: ["./routes/*.js"],
 };
 
 const swaggerSpec = swaggerJsdoc(options);

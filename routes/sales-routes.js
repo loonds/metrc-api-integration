@@ -1,8 +1,11 @@
 var express = require("express");
 var router = express.Router();
-const service = require("../service/sales-service");
-const metrc = require("./helpers/MetrcFactory").getNew();
-const saleService = new service(metrc);
+const { getNew } = require('../config/metrc-factory-config');
+const SaleService = require('../service/sales-service');
+
+const metrc = getNew();
+const saleService = new SaleService(metrc);
+
 
 /**
  * @swagger
@@ -64,7 +67,7 @@ router.get("/patientRegistrationLocation", async function (req, res, next) {
  */
 router.post("/receipts", async function (req, res, next) {
   try {
-    const results = await saleService.createSalesReceipts(req.body); // Use req.body to pass the payload
+    const results = await saleService.createSalesReceipts(req.body);
     res.json(results);
   } catch (error) {
     console.error(error);
@@ -75,7 +78,7 @@ router.post("/receipts", async function (req, res, next) {
 /**
  * @swagger
  * /sales/receipts/{receiptId}:
- *   get:
+ *   put:
  *     summary: Update a sales receipt
  *     description: Update a sales receipt using the provided payload.
  *     parameters:
@@ -170,7 +173,7 @@ router.delete("/receipts/:receiptId", async function (req, res, next) {
     await saleService.deleteSalesReceipt(receiptId);
     res.status(204).send();
   } catch (error) {
-    console.error(error);
+    console.error(error.s);
     res.status(500).json({ error: "An error occurred" });
   }
 });
