@@ -27,7 +27,7 @@ app.use('/', indexRouter);
 app.use('/items', itemsRouter);
 app.use('/employees', employeesRouter);
 app.use('/sales', salesRouter);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/swagger-ui/index', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
