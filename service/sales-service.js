@@ -7,10 +7,20 @@ class SalesService {
     this._metrc = metrc;
     this._pathMaker = new PathMaker("/sales/v2/");
     this._salesReceipts = [];
+    this._createdDelivery = null;
   }
 
   _createEndpoint(ending) {
     return this._pathMaker.endpoint(ending);
+  }
+
+  async _handleResponse(promise) {
+    try {
+      const data = await promise;
+      return { success: true, data };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   }
 
   async getCustomerTypes() {
@@ -23,167 +33,128 @@ class SalesService {
     );
   }
 
-  async getSalesReceipts(receiptId) {
-    return await this._metrc.get(this._createEndpoint(`receipts/${receiptId}`));
-  }
-
   async createSalesReceipts(payload) {
-    try {
-      if (!Array.isArray(payload)) {
-        throw new Error("Invalid payload format");
-      }
-
-      const createdReceipts = [];
-      for (const data of payload) {
-        const newReceipt = {
-          id: this._salesReceipts.length + 1,
-          ...data,
-        };
-        this._salesReceipts.push(newReceipt);
-        const createdReceipt = await this._metrc.post(
-          this._createEndpoint(`receipts`),
-          data
-        );
-        createdReceipts.push(newReceipt);
-      }
-
-      return createdReceipts;
-    } catch (error) {
-      if (error.response) {
-        console.error("Response Data:", error.response.data);
-      }
-      throw error;
+    if (!Array.isArray(payload)) {
+      return { success: false, error: "Invalid payload format" };
     }
+
+    const createdReceipts = [];
+    for (const data of payload) {
+      const newReceipt = {
+        id: this._salesReceipts.length + 1,
+        ...data,
+      };
+      this._salesReceipts.push(newReceipt);
+      const response = await this._handleResponse(
+        this._metrc.post(this._createEndpoint("receipts"), data)
+      );
+      if (!response.success) return response;
+      createdReceipts.push(newReceipt);
+    }
+
+    return { success: true, data: createdReceipts };
   }
 
   async updateSalesReceipt(receiptId, updatedData) {
-    try {
-      const index = this._salesReceipts.findIndex(
-        (receipt) => receipt.id === receiptId
-      );
-      if (index === -1) {
-        throw new Error("Receipt not found");
-      }
+    const index = this._salesReceipts.findIndex(
+      (receipt) => receipt.id === receiptId
+    );
+    if (index === -1) {
+      return { success: false, error: "Receipt not found" };
+    }
 
-      this._salesReceipts[index] = {
-        ...this._salesReceipts[index],
-        ...updatedData,
-      };
+    this._salesReceipts[index] = {
+      ...this._salesReceipts[index],
+      ...updatedData,
+    };
 
-      const updatedReceipt = await this._metrc.put(
+    const response = await this._handleResponse(
+      this._metrc.put(
         this._createEndpoint(`receipts/${receiptId}`),
         updatedData
-      );
+      )
+    );
 
-      return updatedReceipt;
-    } catch (error) {
-      if (error.response) {
-        console.error("Response Data:", error.response.data);
-      }
-      throw error;
-    }
+    return response;
   }
 
   async deleteSalesReceipt(receiptId) {
-    try {
-      const index = this._salesReceipts.findIndex(
-        (receipt) => receipt.id === receiptId
-      );
-      if (index === -1) {
-        throw new Error("Receipt not found");
-      }
-
-      this._salesReceipts.splice(index, 1);
-
-      await this._metrc.delete(this._createEndpoint(`receipts/${receiptId}`));
-    } catch (error) {
-      if (error.response) {
-        console.error("Response Data:", error.response.data);
-      }
-      throw error;
+    const index = this._salesReceipts.findIndex(
+      (receipt) => receipt.id === receiptId
+    );
+    if (index === -1) {
+      return { success: false, error: "Receipt not found" };
     }
+
+    this._salesReceipts.splice(index, 1);
+
+    const response = await this._handleResponse(
+      this._metrc.delete(this._createEndpoint(`receipts/${receiptId}`))
+    );
+
+    return response;
   }
 
   async createHomeDelivery(customerType, transactions) {
-    try {
-      const deliveryPayload = {
-        SalesCustomerType: customerType,
-        Transactions: transactions,
-      };
+    const deliveryPayload = {
+      SalesCustomerType: customerType,
+      Transactions: transactions,
+    };
 
-      // Create the home delivery
-      const createdDelivery = await this._metrc.post(
-        this._createEndpoint("delivery"),
-        deliveryPayload
-      );
+    const response = await this._handleResponse(
+      this._metrc.post(this._createEndpoint("delivery"), deliveryPayload)
+    );
 
-      // Store the created delivery for later steps
-      this._createdDelivery = createdDelivery;
-
-      return createdDelivery;
-    } catch (error) {
-      if (error.response) {
-        console.error("Response Data:", error.response.data);
-      }
-      throw error;
+    if (response.success) {
+      this._createdDelivery = response.data;
     }
+
+    return response;
   }
 
   async removeTransactionFromDelivery(transactionId) {
-    try {
-      if (!this._createdDelivery) {
-        throw new Error(
-          "Delivery not found. You must create a delivery first."
-        );
-      }
+    if (!this._createdDelivery) {
+      return {
+        success: false,
+        error: "Delivery not found. You must create a delivery first.",
+      };
+    }
 
-      // Remove one transaction from the delivery
-      this._createdDelivery.Transactions =
-        this._createdDelivery.Transactions.filter(
-          (transaction) => transaction.Id !== transactionId
-        );
-
-      await this._metrc.put(
-        this._createEndpoint(`delivery/${this._createdDelivery.Id}`),
-        this._createdDelivery
+    this._createdDelivery.Transactions =
+      this._createdDelivery.Transactions.filter(
+        (transaction) => transaction.Id !== transactionId
       );
 
-      return this._createdDelivery;
-    } catch (error) {
-      if (error.response) {
-        console.error("Response Data:", error.response.data);
-      }
-      throw error;
-    }
+    const response = await this._handleResponse(
+      this._metrc.put(
+        this._createEndpoint(`delivery/${this._createdDelivery.Id}`),
+        this._createdDelivery
+      )
+    );
+
+    return response;
   }
 
   async completeHomeDelivery(acceptedPackage, returnedPackage) {
-    try {
-      if (!this._createdDelivery) {
-        throw new Error(
-          "Delivery not found. You must create a delivery first."
-        );
-      }
-
-      // Complete the home delivery with AcceptedPackage and ReturnedPackage
-      const deliveryCompletePayload = {
-        Delivery: this._createdDelivery,
-        AcceptedPackage,
-        ReturnedPackage,
+    if (!this._createdDelivery) {
+      return {
+        success: false,
+        error: "Delivery not found. You must create a delivery first.",
       };
-
-      const completedDelivery = await this._metrc.put(
-        this._createEndpoint(`deliveries/complete`),
-        deliveryCompletePayload
-      );
-
-      return completedDelivery;
-    } catch (error) {
-      if (error.response) {
-        console.error("Response Data:", error.response.data);
-      }
-      throw error;
     }
+
+    const deliveryCompletePayload = {
+      Delivery: this._createdDelivery,
+      AcceptedPackage,
+      ReturnedPackage,
+    };
+
+    return this._handleResponse(
+      this._metrc.put(
+        this._createEndpoint("deliveries/complete"),
+        deliveryCompletePayload
+      )
+    );
   }
 }
 
