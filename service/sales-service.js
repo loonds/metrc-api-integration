@@ -24,13 +24,30 @@ class SalesService {
   }
 
   async getCustomerTypes() {
-    return await this._metrc.get(this._createEndpoint("customertypes"));
+    const response = await this._handleResponse(
+      this._metrc.get(this._createEndpoint("customertypes"))
+    );
+
+    if (response.success) {
+      return { success: true, data: response.data };
+    } else {
+      return { success: false, error: "Failed to fetch customer types" };
+    }
   }
 
   async getPatientRegistrationLocations() {
-    return await this._metrc.get(
-      this._createEndpoint("patientregistration/locations")
+    const response = await this._handleResponse(
+      this._metrc.get(this._createEndpoint("patientregistration/locations"))
     );
+
+    if (response.success) {
+      return { success: true, data: response.data };
+    } else {
+      return {
+        success: false,
+        error: "Failed to fetch patient registration locations",
+      };
+    }
   }
 
   async createSalesReceipts(payload) {
